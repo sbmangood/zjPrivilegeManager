@@ -1,0 +1,13 @@
+{
+
+
+	"mqttIp"					:		"127.0.0.1",
+	"mqttPort"					:		1883,
+
+	"midWareSubMqttTopics"		:		["wwwToPMMidware","sub1"],
+	"midWareReplyPubMqttTopic"	:		"wwwWebSocketMqttTopic",
+	"midWareTranmitPubMqttTopic":		"AUTO_TOPIC",
+
+	"mongodbUrl"				:		"mongodb://127.0.0.1:27017/"
+
+}
