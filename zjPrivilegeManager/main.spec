@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['F:\\PycharmProjects\\2\\zjPrivilegeManager'],
+             pathex=['F:\\PycharmProjects\\2\\gitZjPrivilegeManager\\zjPrivilegeManager\\zjPrivilegeManager'],
              binaries=[],
              datas=[],
              hiddenimports=[],

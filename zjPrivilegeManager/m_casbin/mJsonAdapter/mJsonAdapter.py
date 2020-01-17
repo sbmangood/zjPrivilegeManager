@@ -73,6 +73,7 @@ class jsonAdapter(persist.Adapter):
 
             persist.load_policy_line(cr.load(),model)
 
+
     def _save_policy_line(self, ptype, rule):
         csbr = CasbinRule()
         csbr.PType=ptype
@@ -131,6 +132,7 @@ class jsonAdapter(persist.Adapter):
         return True
 
     def add_policy(self, sec, ptype, rule):
+
         """add policy rules to mongodb"""
         #self._save_policy_line(ptype, rule)
 

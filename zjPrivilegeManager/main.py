@@ -8,13 +8,12 @@ import time
 
 from m_casbin.casbinClass import *
 from globalData.m_globalData import *
+from login.loginManager import *
 
 casbinModelFiltPath='./configs/midWare/rbac_model.conf'
 
 
 def main():
-
-
 
 
     #读取配置文件
@@ -30,6 +29,13 @@ def main():
     mc=MyMQTTClient()
     mc.m__init__(q)
 
+    #生成一个登录管理器
+    lgm=LoginManager(globalData.mongodbUrl,60,5,2)
+    lgm.connectDb()
+
+
+
+
     try:
         fd = open(casbinModelFiltPath, mode='r', encoding='utf-8')
         fd.close()
@@ -43,6 +49,7 @@ def main():
     mcb.getQueueAndmqttClient(q,mc)
     mcb.setPubReplyTopic(globalData.midWareReplyPubMqttTopic)
     mcb.setPubTransmitTopic(globalData.midWareTranmitPubMqttTopic)
+    mcb.loginManager=lgm                    #给权限管理器一个登录器
 
 
     #mqtt 类的线程
@@ -55,6 +62,15 @@ def main():
     mcbThr=threading.Thread(target=mcb.casbinWork,args=())
     mcbThr.start()
 
+    #登录器的线程,主要是更新心跳数,心跳数定时递减
+    lgmThr=threading.Thread(target=lgm.run,args=())
+    lgmThr.start()
+
+    #print(lgm.registerNewUsr("仰望", "zhijintech", "QQ:2433022001"))
+    print(lgm.loginNewUsr(""
+                          ""
+                          ""
+                          "", "zhijintech"))
 
     time.sleep(2)
     #开启MQTT类的监听主题

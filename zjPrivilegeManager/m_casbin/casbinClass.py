@@ -10,9 +10,14 @@ from mqtt.mqttClass import *
 
 from m_casbin.mMongoAdapter.mMongoAdapter import *
 
+from login.loginManager import *
+
+
+
 NOT_JSON=-1
 PRIVILEGE_OK=0
 PRIVILEGE_ERR=1
+PRIVILEGE_NOT_LOGIN="notLogin"
 
 #MQTT_PUB_TRANSMIT_TOPIC="AUTO_TOPIC"
 #MQTT_PUB_REPLY_TOPIC="wwwWebSocketMqttTopic"
@@ -20,6 +25,8 @@ PRIVILEGE_ERR=1
 
 replyPermissionOk={"permission":"ok"}
 replyPermissionErr={"permission":"err"}
+replyPermissionNotLogin={"permission":"notLogin"}
+
 #replyPermissionNotJson={"permission":"notJson"}
 
 
@@ -52,6 +59,7 @@ class Mcasbin(object):
 
     #mqttSubTopics=[""]
 
+    loginManager=LoginManager();
 
     def __init__(self,modelFile,policeFile):
         #adapter=jsonAdapter(policeFile)
@@ -68,47 +76,86 @@ class Mcasbin(object):
     def setPubTransmitTopic(self,str):
         self.mqttPubTransmitTopic=str
 
+    def loginDeal(self,msg,heartReply="false"):
+
+        ret=self.loginManager.jsMessageDeal(msg)
+        #print(ret)
+
+        if(ret==LOGIN_TYPE_ERR):
+            return ret
+
+        type=""
+        type=getJsStr(msg,LOGIN_TYPE)
+
+
+        if(heartReply!="true" and type==LOGIN_TYPE_HEART):
+            return ret
+
+        sendJs={}
+
+        sendJs[LOGIN_TYPE]=ret
+        self.mqttClient.m_pub(self.mqttPubReplyTopic, str(sendJs))
+
+        return ret
+
     def casbinWork(self):
         print("casbinWork start")
 
         while True:
             if not self.m_queue.empty():
                 msg=self.m_queue.get()
-                #msg=self.m_queue.pop()
-                ret=self.judgePrivlege(msg)
+                msg = msg.decode('utf-8')
+                if not isJson(msg):
+                    print("not json")
+                    continue
+                js = json.loads(str(msg))
+                #result=self.loginManager.jsMessageDeal(msg)
 
-                if(ret==NOT_JSON):
-                    print ("not json")
-                    #pass
-                elif(ret==PRIVILEGE_OK):# PRIVILEGE_OK
+                if(self.loginDeal(js)!=LOGIN_TYPE_ERR):
+                    continue
+                #msg=self.m_queue.pop()
+                ret=self.judgePrivlege(js)
+
+                if(ret==PRIVILEGE_OK):# PRIVILEGE_OK
                     #print("permission ok")
                     self.mqttClient.m_pub(self.mqttPubReplyTopic,str(replyPermissionOk))
                     self.mqttClient.m_pub(self.mqttPubTransmitTopic,msg)
-                else:
+                elif(ret==PRIVILEGE_ERR):
                     #print(self.mqttPubReplyTopic)
                     self.mqttClient.m_pub(self.mqttPubReplyTopic, str(replyPermissionErr))
                     #print("permission err")
+                elif(ret==PRIVILEGE_NOT_LOGIN):
+                    self.mqttClient.m_pub(self.mqttPubReplyTopic, str(replyPermissionNotLogin))
+
             time.sleep(0.1)
 
-    def judgePrivlege(self,msg):
+    def judgePrivlege(self,js):
 
         #msg=msg1.encode('utf-8').decode('utf-8')
         #msg=msg.replace("\\n","").strip()
 
-        msg=msg.decode('utf-8')
+
         #print(msg)
-        if not isJson(str(msg)):
-            return NOT_JSON
-        js=json.loads(str(msg))
-        name=getJsStr(js,"useName")
+        #if not isJson(str(msg)):
+        #    return NOT_JSON
+        #js=json.loads(str(msg))
+        name=getJsStr(js,"userName")
+
+        self.loginManager.usrListMutex.acquire()
+        if(not self.loginManager.usrList.get(name)):
+            self.loginManager.usrListMutex.release()
+            return PRIVILEGE_NOT_LOGIN
+        self.loginManager.usrListMutex.release()
+
+
         resource=getJsStr(js,"resource")
         privilege=getJsStr(js,"operate")
 
         if (self.enforcer.enforce(name,resource,privilege)):
-            replyPermissionOk["useName"]=name
+            replyPermissionOk["userName"]=name
             return PRIVILEGE_OK
         else:
-            replyPermissionErr["useName"] = name
+            replyPermissionErr["userName"] = name
             return PRIVILEGE_ERR
 
 
